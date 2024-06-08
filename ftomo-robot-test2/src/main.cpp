@@ -1,94 +1,40 @@
 #include <Arduino.h>
 
-int M0A_pin = 10;
-int M0B_pin = 11;
-int M1A_pin = 12;
-int M1B_pin = 13;
-int M2A_pin = 18;
-int M2B_pin = 19;
-int M3A_pin = 16;
-int M3B_pin = 17;
+int M0A = 10;
+int M0B = 11;
+int M1A = 12;
+int M1B = 13;
+int M2A = 18;
+int M2B = 19;
+int M3A = 16;
+int M3B = 17;
 int strtSW_pin = 14;
 
 int strtSW = 0;
-int go_dir = 0;
+int go_dig = 0;
 int go_sp = 0;
 
-void move(int x, int y) {
-  int MOVE0 = sin((x + 135.0) / 180.0 * 3.14) * y;
-  int MOVE1 = sin((x + 45.0) / 180.0 * 3.14) * y;
-  int MOVE2 = sin((x - 45.0) / 180.0 * 3.14) * y;
-  int MOVE3 = sin((x - 135.0) / 180.0 * 3.14) * y;
-
-  // int invMOVE0 = abs(MOVE0);
-  // int invMOVE1 = abs(MOVE1);
-  // int invMOVE2 = abs(MOVE2);
-  // int invMOVE3 = abs(MOVE3);
-
-  Serial.println(MOVE0);
-  Serial.println(MOVE1);
-  Serial.println(MOVE2);
-  Serial.println(MOVE3);
-
-
-  if(MOVE0 > 0) {
-    analogWrite(M0A_pin, MOVE0);
-    analogWrite(M0B_pin, 0);
-  } else if (MOVE0 < 0) {
-    analogWrite(M0A_pin, 0);
-    analogWrite(M0B_pin, abs(MOVE0));
-  } else {
-    analogWrite(M0A_pin, 0);
-    analogWrite(M0B_pin, 0);
-  }
-
-  if(MOVE1 > 0) {
-    analogWrite(M1A_pin, MOVE1);
-    analogWrite(M1B_pin, 0);
-  } else if (MOVE1 < 0) {
-    analogWrite(M1A_pin, 0);
-    analogWrite(M1B_pin, abs(MOVE1));
-  } else {
-    analogWrite(M1A_pin, 0);
-    analogWrite(M1B_pin, 0);
-  }
-
-  if(MOVE2 > 0) {
-    analogWrite(M2A_pin, MOVE2);
-    analogWrite(M2B_pin, 0);
-  } else if (MOVE2 < 0) {
-    analogWrite(M2A_pin, 0);
-    analogWrite(M2B_pin, abs(MOVE2));
-  } else {
-    analogWrite(M2A_pin, 0);
-    analogWrite(M2B_pin, 0);
-  }
-
-  if(MOVE3 > 0) {
-    analogWrite(M3A_pin, MOVE3);
-    analogWrite(M3B_pin, 0);
-  } else if (MOVE3 < 0) {
-    analogWrite(M3A_pin, 0);
-    analogWrite(M3B_pin, abs(MOVE3));
-  } else {
-    analogWrite(M3A_pin, 0);
-    analogWrite(M3B_pin, 0);
-  }
-
+int drvDigSp(int mtrNum, int dig, int sp) {
+  int drv = sin((dig + (135.0 - mtrNum * 90.0)) / 180.0 * 3.14) * sp;
+  return drv;
 }
 
+void drvMotor(int pinA, int pinB, int sp) {
+  if(sp > 0) {
+    analogWrite(pinA, sp);
+    analogWrite(pinB, 0);
+  } else if (sp < 0) {
+    analogWrite(pinA, 0);
+    analogWrite(pinB, abs(sp));
+  } else {
+    analogWrite(pinA, 0);
+    analogWrite(pinB, 0);
+  }
+}
 
 void setup() {
   pinMode(21, OUTPUT);
   pinMode(22, OUTPUT);
-  pinMode(M0A_pin, OUTPUT);
-  pinMode(M0B_pin, OUTPUT);
-  pinMode(M1A_pin, OUTPUT);
-  pinMode(M1B_pin, OUTPUT);
-  pinMode(M2A_pin, OUTPUT);
-  pinMode(M2B_pin, OUTPUT);
-  pinMode(M3A_pin, OUTPUT);
-  pinMode(M3B_pin, OUTPUT);
   pinMode(strtSW_pin, INPUT);
 
   Serial.begin(115200);
@@ -96,33 +42,27 @@ void setup() {
 
 void loop() {
   strtSW = digitalRead(strtSW_pin);
-  if(strtSW == 0){
-    go_dir = 0;
-    go_sp = 100;
-    move(go_dir, go_sp);
-    digitalWrite(21, HIGH);
-    digitalWrite(22, LOW);
-    delay(200);
-    digitalWrite(21, LOW);
-    digitalWrite(22, HIGH);
-    delay(200);
+  
+  go_dig = 0;
+  go_sp = 100;
 
+  int sp0 = drvDigSp(0, go_dig, go_sp);
+  int sp1 = drvDigSp(1, go_dig, go_sp);
+  int sp2 = drvDigSp(2, go_dig, go_sp);
+  int sp3 = drvDigSp(3, go_dig, go_sp);
 
-  }else{
-    digitalWrite(21, HIGH);
-    digitalWrite(22, LOW);
-    delay(500);
-    digitalWrite(21, LOW);
-    digitalWrite(22, HIGH);
-    delay(500);
-
-    analogWrite(M0A_pin, 0);
-    analogWrite(M0B_pin, 0);
-    analogWrite(M1A_pin, 0);
-    analogWrite(M1B_pin, 0);
-    analogWrite(M2A_pin, 0);
-    analogWrite(M2B_pin, 0);
-    analogWrite(M3A_pin, 0);
-    analogWrite(M3B_pin, 0);
+  if(strtSW == 1){
+    sp0 = sp0;
+    sp1 = sp1;
+    sp2 = sp2;
+    sp3 = sp3;
+  } else {
+    sp0 = sp1 = sp2 = sp3 = 0;
   }
+
+  drvMotor(M0A, M0B, sp0);
+  drvMotor(M1A, M1B, sp1);
+  drvMotor(M2A, M2B, sp2);
+  drvMotor(M3A, M3B, sp3);
+
 }

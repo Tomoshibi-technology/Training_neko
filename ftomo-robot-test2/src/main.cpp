@@ -18,7 +18,7 @@ int go_sp = 0;
 int n = 0;
 
 
-int drvDigSp(int mtrNum, int moveDig, int moveSp);
+// int drvDigSp(int mtrNum, int moveDig, int moveSp);
 // void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp);
 //--------------------------
 
@@ -27,15 +27,16 @@ DRVMOTOR drv[4] = {
 };
 // DRVMOTOR drv0(M0A, M0B);
 
+CALMOTOR cal(drv);
+
 void setup() {
   pinMode(21, OUTPUT);
   pinMode(22, OUTPUT);
   pinMode(strtSW_pin, INPUT);
 
   Serial.begin(115200);
-  for (int i=0; i<4; i++){
-    drv[i].init();
-  }
+
+  cal.init();
 }
 
 void loop() {
@@ -50,19 +51,17 @@ void loop() {
     go_sp = 0;
   }
 
-  for (int i = 0; i < 4; i++){
-    drv[i].drive(drvDigSp(i, go_dig, go_sp));
-  }
+  cal.setGo(go_sp, go_dig);
 }
 
 
 //--------------------------------------------------------------------------------------
 
-int drvDigSp(int mtrNum, int moveDig, int moveSp) {
-  moveDig = (moveDig + 180) % 360 - 180;
-  int sp = sin((moveDig + (135.0 - mtrNum * 90.0)) / 180.0 * 3.14) * moveSp;
-  return sp;
-}
+// int drvDigSp(int mtrNum, int moveDig, int moveSp) {
+//   moveDig = (moveDig + 180) % 360 - 180;
+//   int sp = sin((moveDig + (135.0 - mtrNum * 90.0)) / 180.0 * 3.14) * moveSp;
+//   return sp;
+// }
 
 // void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp){
 //   int mtrSp = drvDigSp(mtrNum, moveDig, moveSp);

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "./drvmotor/drvmotor.h"
 
 int M0A = 10;
 int M0B = 11;
@@ -15,42 +16,6 @@ int go_dig = 0;
 int go_sp = 0;
 int n = 0;
 
-
-class DRVMOTOR{
-  private:
-    int PINA;
-    int PINB;
-    int mtrSp;
-  public:
-    DRVMOTOR(int ptr_A, int ptr_B);
-    void init();
-    void drive(int mtrSp);
-};
-
-
-DRVMOTOR::DRVMOTOR(int ptr_A, int ptr_B){
-  PINA = ptr_A;
-  PINB = ptr_B;
-  mtrSp = 0;
-}
-
-void DRVMOTOR::init(){
-  pinMode(PINA, OUTPUT);
-  pinMode(PINB, OUTPUT);
-}
-
-void DRVMOTOR::drive(int mtrSp){
-  if(mtrSp > 0) {
-    analogWrite(PINA, mtrSp);
-    analogWrite(PINB, 0);
-  }else if(mtrSp < 0) {
-    analogWrite(PINA, 0);
-    analogWrite(PINB, abs(mtrSp));
-  }else{
-    analogWrite(PINA, 0);
-    analogWrite(PINB, 0);
-  }
-}
 
 int drvDigSp(int mtrNum, int moveDig, int moveSp);
 // void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp);

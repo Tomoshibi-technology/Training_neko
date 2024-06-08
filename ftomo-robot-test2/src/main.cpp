@@ -15,9 +15,51 @@ int go_dig = 0;
 int go_sp = 0;
 int n = 0;
 
+
+class DRVMOTOR{
+  private:
+    int PINA;
+    int PINB;
+    int mtrSp;
+  public:
+    DRVMOTOR(int ptr_A, int ptr_B);
+    void init();
+    void drive(int mtrSp);
+};
+
+
+DRVMOTOR::DRVMOTOR(int ptr_A, int ptr_B){
+  PINA = ptr_A;
+  PINB = ptr_B;
+  mtrSp = 0;
+}
+
+void DRVMOTOR::init(){
+  pinMode(PINA, OUTPUT);
+  pinMode(PINB, OUTPUT);
+}
+
+void DRVMOTOR::drive(int mtrSp){
+  if(mtrSp > 0) {
+    analogWrite(PINA, mtrSp);
+    analogWrite(PINB, 0);
+  }else if(mtrSp < 0) {
+    analogWrite(PINA, 0);
+    analogWrite(PINB, abs(mtrSp));
+  }else{
+    analogWrite(PINA, 0);
+    analogWrite(PINB, 0);
+  }
+}
+
 int drvDigSp(int mtrNum, int moveDig, int moveSp);
-void drvMotor(int pinA, int pinB, int mtrSp);
-void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp);
+// void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp);
+
+//--------------------------
+
+DRVMOTOR drv[4] = {
+  DRVMOTOR(M0A, M0B), DRVMOTOR(M1A, M1B), DRVMOTOR(M2A, M2B), DRVMOTOR(M3A, M3B)
+};
 
 void setup() {
   pinMode(21, OUTPUT);
@@ -25,6 +67,9 @@ void setup() {
   pinMode(strtSW_pin, INPUT);
 
   Serial.begin(115200);
+  for (int i=0; i<4; i++){
+    drv[i].init();
+  }
 }
 
 void loop() {
@@ -39,37 +84,21 @@ void loop() {
     go_sp = 0;
   }
 
-  move(0, M0A, M0B, go_dig, go_sp);
-  move(1, M1A, M1B, go_dig, go_sp);
-  move(2, M2A, M2B, go_dig, go_sp);
-  move(3, M3A, M3B, go_dig, go_sp);
+  for (int i = 0; i < 4; i++){
+    drv[i].drive(drvDigSp(i, go_dig, go_sp));
+  }
 }
-
-
 
 
 //--------------------------------------------------------------------------------------
 
 int drvDigSp(int mtrNum, int moveDig, int moveSp) {
   moveDig = (moveDig + 180) % 360 - 180;
-  int drv = sin((moveDig + (135.0 - mtrNum * 90.0)) / 180.0 * 3.14) * moveSp;
-  return drv;
+  int sp = sin((moveDig + (135.0 - mtrNum * 90.0)) / 180.0 * 3.14) * moveSp;
+  return sp;
 }
 
-void drvMotor(int pinA, int pinB, int mtrSp) {
-  if(mtrSp > 0) {
-    analogWrite(pinA, mtrSp);
-    analogWrite(pinB, 0);
-  }else if(mtrSp < 0) {
-    analogWrite(pinA, 0);
-    analogWrite(pinB, abs(mtrSp));
-  }else{
-    analogWrite(pinA, 0);
-    analogWrite(pinB, 0);
-  }
-}
-
-void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp){
-  int mtrSp = drvDigSp(mtrNum, moveDig, moveSp);
-  drvMotor(pinA, pinB, mtrSp);
-}
+// void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp){
+//   int mtrSp = drvDigSp(mtrNum, moveDig, moveSp);
+//   DRVMOTOR(pinA, pinB, mtrSp);
+// }

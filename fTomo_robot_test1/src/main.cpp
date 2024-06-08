@@ -3,7 +3,7 @@
 class LED{
   private:
     int PIN;
-    bool state = 0;
+    bool state;
   public:
     LED(int ptr_pin);
     void init();
@@ -11,10 +11,11 @@ class LED{
     void off();
     void toggle();
 };
+//publicは外からアクセスできる。クラスの中でしか使えない。クラスの外からはクラス名.でアクセスできる。変数も同じ
 
-
-LED::LED(int ptr_pin){
-  PIN = ptr_pin;
+LED::LED(int ptr_pin){ //つくられるときに一回だけ実行される
+  PIN = ptr_pin; 
+  state = 0;
 }
 
 void LED::init(){
@@ -39,7 +40,8 @@ void LED::toggle(){
 //--------------------------
 
 // LED led(21);
-LED led[2] = {
+
+LED led[2] = { //小文字ledはクラス名。大文字LEDはクラス名
   LED(21),
   LED(22)
 };

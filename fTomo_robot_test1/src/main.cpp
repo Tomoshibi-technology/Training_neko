@@ -3,12 +3,13 @@
 class LED{
   private:
     int PIN;
-    bool state;
+    bool state = 0;
   public:
     LED(int ptr_pin);
     void init();
     void light();
     void off();
+    void toggle();
 };
 
 
@@ -21,13 +22,19 @@ void LED::init(){
 }
 
 void LED::light(){
+  state = 1;
   digitalWrite(PIN, HIGH);
 }
 
 void LED::off(){
+  state = 0;
   digitalWrite(PIN, LOW);
 }
 
+void LED::toggle(){
+  state = !state;
+  digitalWrite(PIN, state);
+}
 
 //--------------------------
 
@@ -45,11 +52,7 @@ void setup(){
 
 void loop(){
   for(int i = 0; i < 2; i++){
-    led[i].light();
+    led[i].toggle();
   }
-  delay(200);
-  for(int i = 0; i < 2; i++){
-    led[i].off();
-  }
-  delay(200);
+  delay(500);
 }

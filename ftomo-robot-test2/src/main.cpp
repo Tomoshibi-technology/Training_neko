@@ -15,31 +15,10 @@ int go_dig = 0;
 int go_sp = 0;
 int n = 0;
 
-int drvDigSp(int mtrNum, int moveDig, int moveSp) {
-  moveDig = (moveDig + 180) % 360 - 180;
-  int drv = sin((moveDig + (135.0 - mtrNum * 90.0)) / 180.0 * 3.14) * moveSp;
-  return drv;
-}
+int drvDigSp(int mtrNum, int moveDig, int moveSp);
+void drvMotor(int pinA, int pinB, int mtrSp);
+void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp);
 
-void drvMotor(int pinA, int pinB, int mtrSp) {
-  if(mtrSp > 0) {
-    analogWrite(pinA, mtrSp);
-    analogWrite(pinB, 0);
-  }else if(mtrSp < 0) {
-    analogWrite(pinA, 0);
-    analogWrite(pinB, abs(mtrSp));
-  }else{
-    analogWrite(pinA, 0);
-    analogWrite(pinB, 0);
-  }
-}
-
-void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp){
-  int mtrSp = drvDigSp(mtrNum, moveDig, moveSp);
-  drvMotor(pinA, pinB, mtrSp);
-}
-
-//--------------------------------------------------------------------------------------
 void setup() {
   pinMode(21, OUTPUT);
   pinMode(22, OUTPUT);
@@ -64,4 +43,33 @@ void loop() {
   move(1, M1A, M1B, go_dig, go_sp);
   move(2, M2A, M2B, go_dig, go_sp);
   move(3, M3A, M3B, go_dig, go_sp);
+}
+
+
+
+
+//--------------------------------------------------------------------------------------
+
+int drvDigSp(int mtrNum, int moveDig, int moveSp) {
+  moveDig = (moveDig + 180) % 360 - 180;
+  int drv = sin((moveDig + (135.0 - mtrNum * 90.0)) / 180.0 * 3.14) * moveSp;
+  return drv;
+}
+
+void drvMotor(int pinA, int pinB, int mtrSp) {
+  if(mtrSp > 0) {
+    analogWrite(pinA, mtrSp);
+    analogWrite(pinB, 0);
+  }else if(mtrSp < 0) {
+    analogWrite(pinA, 0);
+    analogWrite(pinB, abs(mtrSp));
+  }else{
+    analogWrite(pinA, 0);
+    analogWrite(pinB, 0);
+  }
+}
+
+void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp){
+  int mtrSp = drvDigSp(mtrNum, moveDig, moveSp);
+  drvMotor(pinA, pinB, mtrSp);
 }

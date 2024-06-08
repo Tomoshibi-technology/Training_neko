@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "./drvmotor/drvmotor.h"
+#include "./calmotor/calmotor.h"
 
 int M0A = 10;
 int M0B = 11;
@@ -19,12 +20,12 @@ int n = 0;
 
 int drvDigSp(int mtrNum, int moveDig, int moveSp);
 // void move(int mtrNum, int pinA, int pinB, int moveDig, int moveSp);
-
 //--------------------------
 
 DRVMOTOR drv[4] = {
   DRVMOTOR(M0A, M0B), DRVMOTOR(M1A, M1B), DRVMOTOR(M2A, M2B), DRVMOTOR(M3A, M3B)
 };
+// DRVMOTOR drv0(M0A, M0B);
 
 void setup() {
   pinMode(21, OUTPUT);

@@ -48,6 +48,7 @@ void setup(){
   for(int i = 0; i < 2; i++){
     led[i].init();
   }
+  led[0].light();
 }
 
 void loop(){

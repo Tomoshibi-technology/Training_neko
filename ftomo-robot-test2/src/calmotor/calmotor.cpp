@@ -10,10 +10,10 @@
 
 CALMOTOR::CALMOTOR(DRVMOTOR* ptr_motor){
 	// Constructor
-	MTRS = ptr_motor;
-	// MTRS[1] = ptr_motor+1;
-	// MTRS[2] = ptr_motor+2;
-	// MTRS[3] = ptr_motor+3;
+	MTRS[0] = ptr_motor;
+	MTRS[1] = ptr_motor+1;
+	MTRS[2] = ptr_motor+2;
+	MTRS[3] = ptr_motor+3;
 }
 
 void CALMOTOR::init() {

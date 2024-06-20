@@ -41,8 +41,8 @@ void setup() {
 
 void loop() {
   n++;
-  go_dig = n / 100;
-  go_sp = 50;
+  go_dig = n / 15;
+  go_sp = 100;
 
   strtSW = digitalRead(strtSW_pin);
   if(strtSW == 0){

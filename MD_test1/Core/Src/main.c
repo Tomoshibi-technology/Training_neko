@@ -59,7 +59,7 @@ static void MX_TIM3_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-//extern void initialise_monitor_handles(void);//printf初期設定
+//extern void initialise_monitor_handles(void);//printf初期設�?
 
 /* USER CODE END 0 */
 
@@ -72,7 +72,7 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
-//	initialise_monitor_handles();//printf初期化
+//	initialise_monitor_handles();//printf初期�?
 	int compare = 499;
 
   /* USER CODE END 1 */
@@ -104,7 +104,7 @@ int main(void)
   HAL_TIM_PWM_Start(&htim16, TIM_CHANNEL_1);
   HAL_TIMEx_PWMN_Start(&htim16, TIM_CHANNEL_1);
 
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 50);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 100);
   __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, compare);
 
   HAL_Delay(2000);
@@ -119,7 +119,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-//	  printf("Dutyは %d です。\n", compare);
+//	  printf("Dutyは %d です�??\n", compare);
 //
 //	  HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, 0);
 //	  HAL_Delay(200);
@@ -132,7 +132,7 @@ int main(void)
 //		  HAL_Delay(1);
 //	  }
 //
-//	  printf("Dutyは %d です。\n", compare);
+//	  printf("Dutyは %d です�??\n", compare);
 //
 //	  HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, 0);
 //	  HAL_Delay(200);
@@ -146,20 +146,18 @@ int main(void)
 //	  }
 
 	  if(HAL_GPIO_ReadPin(SW0_GPIO_Port, SW0_Pin) == 0){
-		  for(int i = compare; i<650; i++){
+		  for(int i = compare; i<990; i++){
 			  compare = i;
 			  __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, compare);
-			  HAL_Delay(10);
+			  HAL_Delay(1);
 		  }
-		  __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, 649);
-
-	  }else if(HAL_GPIO_ReadPin(SW0_GPIO_Port, SW0_Pin) == 1){
-		  for(int i = compare; i>350; i--){
+//		  __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, 989);
+		  for(int i = compare; i>10; i--){
 			  compare = i;
 			  __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, compare);
-			  HAL_Delay(10);
+			  HAL_Delay(1);
 		  }
-		  __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, 351);
+//		  __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, 11);
 
 	  }else{
 		  __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, 499);

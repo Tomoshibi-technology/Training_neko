@@ -43,7 +43,7 @@
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
-
+int duty = 500;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -101,10 +101,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  for(int i=0; i<1000; i++){
-		  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, i);
-		  HAL_Delay(1);
-	  }
+//	  for(int i=0; i<1000; i++){
+//		  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, i);
+//		  HAL_Delay(1);
+//	  }
+	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty);
   }
   /* USER CODE END 3 */
 }

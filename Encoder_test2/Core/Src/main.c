@@ -44,32 +44,33 @@
 /* Private variables ---------------------------------------------------------*/
 
 I2C_HandleTypeDef hi2c1;
-
-TIM_HandleTypeDef htim3;
+DMA_HandleTypeDef hdma_i2c1_tx;
+DMA_HandleTypeDef hdma_i2c1_rx;
 
 /* USER CODE BEGIN PV */
-volatile uint32_t m_counter;
+//volatile uint32_t m_counter;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern void initialise_monitor_handles(void);
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-    if (htim == &htim3){
-        m_counter++;
-    }
-}
+//extern void initialise_monitor_handles(void);
+
+//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+//{
+//    if (htim == &htim3){
+//        m_counter++;
+//    }
+//}
 /* USER CODE END 0 */
 
 /**
@@ -80,7 +81,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  initialise_monitor_handles();
+//  initialise_monitor_handles();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -101,14 +102,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
-  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Base_Start_IT(&htim3);
+//  HAL_TIM_Base_Start_IT(&htim3);
 
   uint16_t AS5600_ADDR = 0x36 << 1;
   uint8_t ANGLE_ADDR = 0x0E;
-  uint8_t rcvBuf[2] = {0,0};
+  uint8_t rcvBuf[128] = {0,0};
 
   long totalAng = 0;
   long ptotalAng = 0;
@@ -119,14 +120,17 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_I2C_Master_Transmit(&hi2c1, AS5600_ADDR, &ANGLE_ADDR, 1, 1000);
-  HAL_I2C_Master_Receive(&hi2c1, AS5600_ADDR, rcvBuf, 2, 1000);
+  HAL_I2C_Master_Transmit_DMA (&hi2c1, AS5600_ADDR, &ANGLE_ADDR, 1);
+  HAL_I2C_Master_Receive_DMA (&hi2c1, AS5600_ADDR, rcvBuf, sizeof(rcvBuf));
+
+//  HAL_I2C_Master_Transmit(&hi2c1, AS5600_ADDR, &ANGLE_ADDR, 1, 1000);
+//  HAL_I2C_Master_Receive(&hi2c1, AS5600_ADDR, rcvBuf, 2, 1000);
 
   pAngle = rcvBuf[0]*256 + rcvBuf[1];
   ptotalAng = pAngle;
 
-  uint32_t p_counter;
-  p_counter = m_counter;
+//  uint32_t p_counter;
+//  p_counter = m_counter;
 
   while (1)
   {
@@ -157,13 +161,13 @@ int main(void)
 	    pAngle = Angle;
 //	    pspeed = speed;
 
-	    if(m_counter - p_counter > 1000){
-	    	printf("%ld\n", totalAng);
-//	    	printf("%ld\n", m_counter);
+//	    if(m_counter - p_counter > 1000){
+//	    	printf("%ld\n", totalAng);
+////	    	printf("%ld\n", m_counter);
 	    	HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-	    	p_counter = m_counter;
-	    }
-	    else{}
+//	    	p_counter = m_counter;
+//	    }
+//	    else{}
   }
   /* USER CODE END 3 */
 }
@@ -218,7 +222,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x20303E5D;
+  hi2c1.Init.Timing = 0x00303D5B;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -251,47 +255,21 @@ static void MX_I2C1_Init(void)
 }
 
 /**
-  * @brief TIM3 Initialization Function
-  * @param None
-  * @retval None
+  * Enable DMA controller clock
   */
-static void MX_TIM3_Init(void)
+static void MX_DMA_Init(void)
 {
 
-  /* USER CODE BEGIN TIM3_Init 0 */
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
 
-  /* USER CODE END TIM3_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM3_Init 1 */
-
-  /* USER CODE END TIM3_Init 1 */
-  htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 15;
-  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 999;
-  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM3_Init 2 */
-
-  /* USER CODE END TIM3_Init 2 */
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
 
 }
 

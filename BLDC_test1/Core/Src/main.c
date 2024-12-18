@@ -55,11 +55,15 @@ TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 uint16_t dutys[3] = {0};//0 ~ 2000
+int8_t HiZ_nFlag[3] = {0};//0 or 1 like bool type, if 0:Hi-Z/1:drive
 
-int16_t past_angle_mul10 = 0;//0 ~ 3599, past angle multiplied by 10
-int16_t now_angle_mul10 = 0;//0 ~ 3599, now angle multiplied by 10
+int16_t past_ref_angle_mul10 = 0;//0 ~ 3599, past angle multiplied by 10
+int16_t ref_angle_mul10 = 0;//0 ~ 3599, now angle multiplied by 10
+int16_t ref_phases_mul10[3] = {0};//0 ~ 3599, reference each(UVW) phases
 
 float RPS = 0;//Roll Per Second, if minus sign; reverse(-9 ~ 9)
+float roll_voltage_rate = 0;//PWM voltage rate
+
 int16_t angular_velocity_mul10 = 0;//degree per second multiplied by 10
 
 uint64_t past_time_1u = 0;
@@ -77,7 +81,7 @@ static void MX_OPAMP3_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
-
+void cal_120dgrSquareWave(int phase_mul10, float PWM_rate, int channel, uint16_t* ptr_dutys, int8_t* ptr_HiZ_nFlag);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -126,6 +130,8 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim3);
+
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
 
@@ -154,15 +160,28 @@ int main(void)
 
 	//calculate now angle
 	onetime_variable = angular_velocity_mul10 * delta_time_1u / 1000000;
-	now_angle_mul10 = past_angle_mul10 + onetime_variable;
-	now_angle_mul10 = (now_angle_mul10 + 3600) % 3600;//regulate
+	ref_angle_mul10 = past_ref_angle_mul10 + onetime_variable;
+	ref_angle_mul10 = (ref_angle_mul10 + 3600) % 3600;//regulate to 0~3600
+
+	//calculate each phase
+	ref_phases_mul10[0] = ref_angle_mul10;
+	ref_phases_mul10[1] = ref_angle_mul10 + 1200;
+		ref_phases_mul10[1] = (ref_angle_mul10 + 3600) % 3600;//regulate to 0~3600
+	ref_phases_mul10[2] = ref_angle_mul10 + 2400;
+		ref_phases_mul10[2] = (ref_angle_mul10 + 3600) % 3600;//regulate to 0~3600
 
 	//calculate each phase Duty
+	cal_120dgrSquareWave(ref_phases_mul10[0], roll_voltage_rate, 1, dutys, HiZ_nFlag);//実験用に、実際にレジスタにはセットしないで
+	cal_120dgrSquareWave(ref_phases_mul10[1], roll_voltage_rate, 2, dutys, HiZ_nFlag);//セットしてる値だけ確認したい
+	cal_120dgrSquareWave(ref_phases_mul10[2], roll_voltage_rate, 3, dutys, HiZ_nFlag);
 
 	//output each Duty
-	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, dutys[0]);
-	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, dutys[1]);
-	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, dutys[2]);
+//	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, dutys[0]);//ここらへんレジスタたたきたい
+//	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, dutys[1]);//実験用に出力を切る
+//	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, dutys[2]);
+
+	//substitute now to past
+	past_ref_angle_mul10 = ref_angle_mul10;
 
     /* USER CODE END WHILE */
 
@@ -562,7 +581,33 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void cal_120dgrSquareWave(int phase_mul10, float PWM_rate, int channel, uint16_t* ptr_dutys, int8_t* ptr_HiZ_nFlag){
+  float max_duty = 1999.0;
+  int channel_dec1 = channel - 1;
 
+  //120 degree Square Wave like Sin Wave
+  if(0 <= phase_mul10 || phase_mul10 < 1200){//0 ~ 120, High
+//	TIM1 -> CCER |= (0b1 << (2 + channel_dec1*4));
+//	TIM1 -> CCER |= (0b1 << (channel_dec1*4));
+	ptr_dutys[channel_dec1] = (int)(max_duty * PWM_rate);
+	ptr_HiZ_nFlag[channel_dec1] = 1;//Enable
+  }else if(1200 <= phase_mul10 || phase_mul10 < 2400){//120 ~ 240, Hi-Z
+//	TIM1 -> CCER &= ~(0b1 << (2 + channel_dec1*4));
+//	TIM1 -> CCER &= ~(0b1 << (channel_dec1*4));
+	ptr_dutys[channel_dec1] = 0;
+	ptr_HiZ_nFlag[channel_dec1] = 0;//disable
+  }else if(2400 <= phase_mul10 || phase_mul10 < 3600){//240 ~ 359, Low
+//	TIM1 -> CCER |= (0b1 << (2 + channel_dec1*4));
+//	TIM1 -> CCER |= (0b1 << (channel_dec1*4));
+	ptr_dutys[channel_dec1] = 0;
+	ptr_HiZ_nFlag[channel_dec1] = 1;//Enable
+  }else{//exception
+//	TIM1 -> CCER &= ~(0b1 << (2 + channel_dec1*4));
+//	TIM1 -> CCER &= ~(0b1 << (channel_dec1*4));
+	ptr_dutys[channel_dec1] = 0;
+	ptr_HiZ_nFlag[channel_dec1] = 0;//disable
+  }
+}
 /* USER CODE END 4 */
 
 /**

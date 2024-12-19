@@ -64,10 +64,11 @@ int16_t ref_phases_mul10[3] = {0};//0 ~ 3599, reference each(UVW) phases
 float RPS = 0.0;//Roll Per Second, if minus sign; reverse(-9 ~ 9)
 float roll_voltage_rate = 0.0;//PWM voltage rate
 
-uint64_t past_time_1u = 0;
-uint64_t now_time_1u = 0;
-//uint64_t delta_time_1u = 0;
-int64_t delta_time_1u = 0;
+uint64_t past_time_100n = 0;
+uint64_t now_time_100n = 0;
+int64_t delta_time_100n = 0;
+
+uint32_t CNTresister_overflow = 0;
 
 
 float onetime_variable = 0;
@@ -81,6 +82,8 @@ int val_CCR3 = 0;
 int16_t val_past_ref_angle_mul10 = 0;//0 ~ 3599, past angle multiplied by 10
 int16_t val_ref_angle_mul10 = 0;//0 ~ 3599, now angle multiplied by 10
 int16_t val_ref_phases_mul10[3] = {0};//0 ~ 3599, reference each(UVW) phases
+
+int loop_counter = 0;//count loop times
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -103,7 +106,7 @@ void set_PWMDuty(int channel, uint16_t* ptr_dutys);
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim == &htim3){
-    	now_time_1u++;
+    	CNTresister_overflow++;
     }
 }
 /* USER CODE END 0 */
@@ -155,8 +158,9 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
   HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 
-  uint64_t Ltika_past_time_1u = now_time_1u;
-  past_time_1u = now_time_1u;
+  now_time_100n = CNTresister_overflow * 65536 + (TIM3 -> CNT);
+  uint64_t Ltika_past_time_100n = now_time_100n;
+  past_time_100n = now_time_100n;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -164,16 +168,22 @@ int main(void)
   while (1)
   {
 	// calculate 1_loop time//
-	delta_time_1u = now_time_1u - past_time_1u;
-	past_time_1u = now_time_1u;
+	now_time_100n = CNTresister_overflow * 65536 + (TIM3 -> CNT);
+	delta_time_100n = now_time_100n - past_time_100n;
+	past_time_100n = now_time_100n;
+
+	loop_counter ++;
 
 	//calculate now angle
-	onetime_variable = RPS * 3600.0 * (float)delta_time_1u * 0.000001;
+	onetime_variable = RPS * 3600.0 * (float)delta_time_100n * 0.0000001;
 	ref_angle_mul10 = past_ref_angle_mul10 + onetime_variable;
-	while(ref_angle_mul10 < 0.0){//regulate to 0~3600
-		ref_angle_mul10 += 3600.0;
+	while(ref_angle_mul10 < 0.0 || ref_angle_mul10 > 3600.0){//regulate to 0~3600
+		if(ref_angle_mul10 < 0.0){
+			ref_angle_mul10 += 3600.0;
+		}else if(ref_angle_mul10 > 3600.0){
+			ref_angle_mul10 -= 3600.0;
+		}
 	}
-	ref_angle_mul10 %= 3600.0;
 
 	//calculate each phase
 	ref_phases_mul10[0] = (int)ref_angle_mul10;
@@ -184,7 +194,7 @@ int main(void)
 
 	//calculate each phase Duty
 	cal_120dgrSquareWave(ref_phases_mul10[0], roll_voltage_rate, 1, dutys, HiZ_nFlag);
-	cal_120dgrSquareWave(ref_phases_mul10[1], roll_voltage_rate, 2, dutys, HiZ_nFlag);//セ�?トしてる�?��?け確認したい
+	cal_120dgrSquareWave(ref_phases_mul10[1], roll_voltage_rate, 2, dutys, HiZ_nFlag);//セ??��?��?トしてる�???��?��??��?��?け確認したい
 	cal_120dgrSquareWave(ref_phases_mul10[2], roll_voltage_rate, 3, dutys, HiZ_nFlag);
 
 	//set CCER resister to complementary PWM
@@ -195,7 +205,7 @@ int main(void)
 	//output each Duty
 	set_PWMDuty(1, dutys);
 	set_PWMDuty(2, dutys);
-	set_PWMDuty(3, dutys);//出力を�?れるようにした�?
+	set_PWMDuty(3, dutys);//出力を??��?��?れるようにした??��?��?
 
 	//substitute now to past
 	past_ref_angle_mul10 = ref_angle_mul10;
@@ -216,9 +226,9 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
 	//Lチカ
-	if(now_time_1u - Ltika_past_time_1u > 500){
+	if(now_time_100n - Ltika_past_time_100n > 5000000){
 		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-		Ltika_past_time_1u = now_time_1u;
+		Ltika_past_time_100n = now_time_100n;
 	}else{}
   }
   /* USER CODE END 3 */
@@ -545,9 +555,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 15;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 159;
+  htim3.Init.Period = 65535;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)

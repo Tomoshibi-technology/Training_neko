@@ -57,14 +57,12 @@ TIM_HandleTypeDef htim3;
 uint16_t dutys[3] = {0};//0 ~ 2000
 int8_t HiZ_nFlag[3] = {0};//0 or 1 like bool type, if 0:Hi-Z/1:drive
 
-int16_t past_ref_angle_mul10 = 0;//0 ~ 3599, past angle multiplied by 10
-int16_t ref_angle_mul10 = 0;//0 ~ 3599, now angle multiplied by 10
+float past_ref_angle_mul10 = 0.0;//0 ~ 3599, past angle multiplied by 10
+float ref_angle_mul10 = 0.0;//0 ~ 3599, now angle multiplied by 10
 int16_t ref_phases_mul10[3] = {0};//0 ~ 3599, reference each(UVW) phases
 
-float RPS = 0;//Roll Per Second, if minus sign; reverse(-9 ~ 9)
-float roll_voltage_rate = 0;//PWM voltage rate
-
-int16_t angular_velocity_mul10 = 0;//degree per second multiplied by 10
+float RPS = 0.0;//Roll Per Second, if minus sign; reverse(-9 ~ 9)
+float roll_voltage_rate = 0.0;//PWM voltage rate
 
 uint64_t past_time_1u = 0;
 uint64_t now_time_1u = 0;
@@ -72,7 +70,7 @@ uint64_t now_time_1u = 0;
 int64_t delta_time_1u = 0;
 
 
-int onetime_variable = 0;
+float onetime_variable = 0;
 
 //value for check variable
 int val_CCER = 0;
@@ -169,19 +167,16 @@ int main(void)
 	delta_time_1u = now_time_1u - past_time_1u;
 	past_time_1u = now_time_1u;
 
-	//calculate angular velocity
-	angular_velocity_mul10 = (int)(RPS * 3600.0);
-
 	//calculate now angle
-	onetime_variable = angular_velocity_mul10 * delta_time_1u / 1000000;
+	onetime_variable = RPS * 3600.0 * (float)delta_time_1u * 0.000001;
 	ref_angle_mul10 = past_ref_angle_mul10 + onetime_variable;
-	while(ref_angle_mul10 < 0){//regulate to 0~3600
-		ref_angle_mul10 += 3600;
+	while(ref_angle_mul10 < 0.0){//regulate to 0~3600
+		ref_angle_mul10 += 3600.0;
 	}
-	ref_angle_mul10 %= 3600;
+	ref_angle_mul10 %= 3600.0;
 
 	//calculate each phase
-	ref_phases_mul10[0] = ref_angle_mul10;
+	ref_phases_mul10[0] = (int)ref_angle_mul10;
 	ref_phases_mul10[1] = ref_angle_mul10 + 1200;
 		ref_phases_mul10[1] %= 3600;//regulate to 0~3600
 	ref_phases_mul10[2] = ref_angle_mul10 + 2400;

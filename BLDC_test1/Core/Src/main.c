@@ -68,7 +68,21 @@ int16_t angular_velocity_mul10 = 0;//degree per second multiplied by 10
 
 uint64_t past_time_1u = 0;
 uint64_t now_time_1u = 0;
-uint64_t delta_time_1u = 0;
+//uint64_t delta_time_1u = 0;
+int64_t delta_time_1u = 0;
+
+
+int onetime_variable = 0;
+
+//value for check variable
+int val_CCER = 0;
+int val_CCR1 = 0;
+int val_CCR2 = 0;
+int val_CCR3 = 0;
+
+int16_t val_past_ref_angle_mul10 = 0;//0 ~ 3599, past angle multiplied by 10
+int16_t val_ref_angle_mul10 = 0;//0 ~ 3599, now angle multiplied by 10
+int16_t val_ref_phases_mul10[3] = {0};//0 ~ 3599, reference each(UVW) phases
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,6 +96,8 @@ static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void cal_120dgrSquareWave(int phase_mul10, float PWM_rate, int channel, uint16_t* ptr_dutys, int8_t* ptr_HiZ_nFlag);
+void set_complementaryPWM(int channel, int8_t* ptr_HiZ_nFlag);
+void set_PWMDuty(int channel, uint16_t* ptr_dutys);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -143,8 +159,6 @@ int main(void)
 
   uint64_t Ltika_past_time_1u = now_time_1u;
   past_time_1u = now_time_1u;
-
-  int32_t onetime_variable = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -161,36 +175,55 @@ int main(void)
 	//calculate now angle
 	onetime_variable = angular_velocity_mul10 * delta_time_1u / 1000000;
 	ref_angle_mul10 = past_ref_angle_mul10 + onetime_variable;
-	ref_angle_mul10 = (ref_angle_mul10 + 3600) % 3600;//regulate to 0~3600
+	while(ref_angle_mul10 < 0){//regulate to 0~3600
+		ref_angle_mul10 += 3600;
+	}
+	ref_angle_mul10 %= 3600;
 
 	//calculate each phase
 	ref_phases_mul10[0] = ref_angle_mul10;
 	ref_phases_mul10[1] = ref_angle_mul10 + 1200;
-		ref_phases_mul10[1] = (ref_angle_mul10 + 3600) % 3600;//regulate to 0~3600
+		ref_phases_mul10[1] %= 3600;//regulate to 0~3600
 	ref_phases_mul10[2] = ref_angle_mul10 + 2400;
-		ref_phases_mul10[2] = (ref_angle_mul10 + 3600) % 3600;//regulate to 0~3600
+		ref_phases_mul10[2] %= 3600;//regulate to 0~3600
 
 	//calculate each phase Duty
-	cal_120dgrSquareWave(ref_phases_mul10[0], roll_voltage_rate, 1, dutys, HiZ_nFlag);//実験用に、実際にレジスタにはセットしないで
-	cal_120dgrSquareWave(ref_phases_mul10[1], roll_voltage_rate, 2, dutys, HiZ_nFlag);//セットしてる値だけ確認したい
+	cal_120dgrSquareWave(ref_phases_mul10[0], roll_voltage_rate, 1, dutys, HiZ_nFlag);
+	cal_120dgrSquareWave(ref_phases_mul10[1], roll_voltage_rate, 2, dutys, HiZ_nFlag);//セ�?トしてる�?��?け確認したい
 	cal_120dgrSquareWave(ref_phases_mul10[2], roll_voltage_rate, 3, dutys, HiZ_nFlag);
 
+	//set CCER resister to complementary PWM
+	set_complementaryPWM(1, HiZ_nFlag);
+	set_complementaryPWM(2, HiZ_nFlag);
+	set_complementaryPWM(3, HiZ_nFlag);
+
 	//output each Duty
-//	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, dutys[0]);//ここらへんレジスタたたきたい
-//	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, dutys[1]);//実験用に出力を切る
-//	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, dutys[2]);
+	set_PWMDuty(1, dutys);
+	set_PWMDuty(2, dutys);
+	set_PWMDuty(3, dutys);//出力を�?れるようにした�?
 
 	//substitute now to past
 	past_ref_angle_mul10 = ref_angle_mul10;
 
+	//check resister
+	val_CCER = TIM1 -> CCER;//HiZ_nFlag[0~2]
+	val_CCR1 = TIM1 -> CCR1;//dutys[0]
+	val_CCR2 = TIM1 -> CCR2;//dutys[1]
+	val_CCR3 = TIM1 -> CCR3;//dutys[2]
+
+	val_past_ref_angle_mul10 = past_ref_angle_mul10;//0 ~ 3599, past angle multiplied by 10
+	val_ref_angle_mul10 = ref_angle_mul10;//0 ~ 3599, now angle multiplied by 10
+	val_ref_phases_mul10[0] = ref_phases_mul10[0];//0 ~ 3599, reference each(UVW) phases
+	val_ref_phases_mul10[1] = ref_phases_mul10[1];//0 ~ 3599, reference each(UVW) phases
+	val_ref_phases_mul10[2] = ref_phases_mul10[2];//0 ~ 3599, reference each(UVW) phases
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 
 	//Lチカ
 	if(now_time_1u - Ltika_past_time_1u > 500){
-	  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-	  Ltika_past_time_1u = now_time_1u;
+		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+		Ltika_past_time_1u = now_time_1u;
 	}else{}
   }
   /* USER CODE END 3 */
@@ -582,31 +615,53 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void cal_120dgrSquareWave(int phase_mul10, float PWM_rate, int channel, uint16_t* ptr_dutys, int8_t* ptr_HiZ_nFlag){
-  float max_duty = 1999.0;
-  int channel_dec1 = channel - 1;
+	float max_duty = 1999.0;
+	int channel_dec1 = channel - 1;
 
-  //120 degree Square Wave like Sin Wave
-  if(0 <= phase_mul10 || phase_mul10 < 1200){//0 ~ 120, High
-//	TIM1 -> CCER |= (0b1 << (2 + channel_dec1*4));
-//	TIM1 -> CCER |= (0b1 << (channel_dec1*4));
+	//120 degree Square Wave like Sin Wave
+	if(0 <= phase_mul10 && phase_mul10 < 1200){//0 ~ 120, High
 	ptr_dutys[channel_dec1] = (int)(max_duty * PWM_rate);
 	ptr_HiZ_nFlag[channel_dec1] = 1;//Enable
-  }else if(1200 <= phase_mul10 || phase_mul10 < 2400){//120 ~ 240, Hi-Z
-//	TIM1 -> CCER &= ~(0b1 << (2 + channel_dec1*4));
-//	TIM1 -> CCER &= ~(0b1 << (channel_dec1*4));
+
+	}else if(1200 <= phase_mul10 && phase_mul10 < 2400){//120 ~ 240, Hi-Z
 	ptr_dutys[channel_dec1] = 0;
 	ptr_HiZ_nFlag[channel_dec1] = 0;//disable
-  }else if(2400 <= phase_mul10 || phase_mul10 < 3600){//240 ~ 359, Low
-//	TIM1 -> CCER |= (0b1 << (2 + channel_dec1*4));
-//	TIM1 -> CCER |= (0b1 << (channel_dec1*4));
+
+	}else if(2400 <= phase_mul10 && phase_mul10 < 3600){//240 ~ 359, Low
 	ptr_dutys[channel_dec1] = 0;
 	ptr_HiZ_nFlag[channel_dec1] = 1;//Enable
-  }else{//exception
-//	TIM1 -> CCER &= ~(0b1 << (2 + channel_dec1*4));
-//	TIM1 -> CCER &= ~(0b1 << (channel_dec1*4));
+
+	}else{//exception
 	ptr_dutys[channel_dec1] = 0;
 	ptr_HiZ_nFlag[channel_dec1] = 0;//disable
-  }
+	}
+}
+
+void set_complementaryPWM(int channel, int8_t* ptr_HiZ_nFlag){
+	int channel_dec1 = channel - 1;
+
+	if(ptr_HiZ_nFlag[channel_dec1] == 0){//disable
+		TIM1 -> CCER &= ~(0b1 << (2 + channel_dec1*4));
+		TIM1 -> CCER &= ~(0b1 << (channel_dec1*4));
+
+	}else if(ptr_HiZ_nFlag[channel_dec1] == 1){//enable
+		TIM1 -> CCER |= (0b1 << (2 + channel_dec1*4));
+		TIM1 -> CCER |= (0b1 << (channel_dec1*4));
+
+	}else{
+		TIM1 -> CCER &= ~(0b1 << (2 + channel_dec1*4));
+		TIM1 -> CCER &= ~(0b1 << (channel_dec1*4));
+	}
+}
+void set_PWMDuty(int channel, uint16_t* ptr_dutys){
+	int channel_dec1 = channel - 1;
+	if(channel == 1){
+		TIM1 -> CCR1 = ptr_dutys[channel_dec1];
+	}else if(channel == 2){
+		TIM1 -> CCR2 = ptr_dutys[channel_dec1];
+	}else if(channel == 3){
+		TIM1 -> CCR3 = ptr_dutys[channel_dec1];
+	}else{}
 }
 /* USER CODE END 4 */
 

@@ -54,26 +54,31 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
-uint16_t dutys[3] = {0};//0 ~ 2000
-int8_t HiZ_nFlag[3] = {0};//0 or 1 like bool type, if 0:Hi-Z/1:drive
-
-float past_ref_angle_mul10 = 0.0;//0 ~ 3599, past angle multiplied by 10
-float ref_angle_mul10 = 0.0;//0 ~ 3599, now angle multiplied by 10
-int16_t ref_phases_mul10[3] = {0};//0 ~ 3599, reference each(UVW) phases
-
-float RPS = 0.0;//Roll Per Second, if minus sign; reverse(-9 ~ 9)
-float roll_voltage_rate = 0.0;//PWM voltage rate
-
+//time count//
 uint64_t past_time_100n = 0;
 uint64_t now_time_100n = 0;
 int64_t delta_time_100n = 0;
 
 uint32_t CNTresister_overflow = 0;
 
+//output value//
+uint16_t dutys[3] = {0};//0 ~ 2000
+int8_t HiZ_nFlag[3] = {0};//0 or 1 like bool type, if 0:Hi-Z/1:drive
 
+//angle & phase//
+float past_ref_angle_mul10 = 0.0;//0 ~ 3599, past angle multiplied by 10
+float ref_angle_mul10 = 0.0;//0 ~ 3599, now angle multiplied by 10
+int16_t ref_phases_mul10[3] = {0};//0 ~ 3599, reference each(UVW) phases
+
+//user variable//
+float RPS = 0.0;//Roll Per Second, if minus sign; reverse(-9 ~ 9)
+float RPS_electric = 0.0;//Roll Per Second : electric, mul7
+float roll_voltage_rate = 0.0;//PWM voltage rate
+
+//???//
 float onetime_variable = 0;
 
-//value for check variable
+//value for check variable//
 int val_CCER = 0;
 int val_CCR1 = 0;
 int val_CCR2 = 0;
@@ -84,6 +89,7 @@ int16_t val_ref_angle_mul10 = 0;//0 ~ 3599, now angle multiplied by 10
 int16_t val_ref_phases_mul10[3] = {0};//0 ~ 3599, reference each(UVW) phases
 
 int loop_counter = 0;//count loop times
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -175,7 +181,8 @@ int main(void)
 	loop_counter ++;
 
 	//calculate now angle
-	onetime_variable = RPS * 3600.0 * (float)delta_time_100n * 0.0000001;
+	RPS_electric = RPS * 7;
+	onetime_variable = RPS_electric * 3600.0 * (float)delta_time_100n * 0.0000001;
 	ref_angle_mul10 = past_ref_angle_mul10 + onetime_variable;
 	while(ref_angle_mul10 < 0.0 || ref_angle_mul10 > 3600.0){//regulate to 0~3600
 		if(ref_angle_mul10 < 0.0){

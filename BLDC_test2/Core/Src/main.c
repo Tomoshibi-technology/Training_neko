@@ -66,8 +66,8 @@ uint16_t dutys[3] = {0};//0 ~ 2000
 int8_t HiZ_nFlag[3] = {0};//0 or 1 like bool type, if 0:Hi-Z/1:drive
 
 //angle & phase//
-int32_t past_ref_angle_mul106 = 0;//0 ~ 359,999,999. past angle multiplied by 10
-int32_t ref_angle_mul106 = 0;//0 ~ 359,999,999. now angle multiplied by 10
+float past_ref_angle_mul10 = 0.0;//0 ~ 3599, past angle multiplied by 10
+float ref_angle_mul10 = 0.0;//0 ~ 3599, now angle multiplied by 10
 int16_t ref_phases_mul10[3] = {0};//0 ~ 3599, reference each(UVW) phases
 
 //user variable//
@@ -75,16 +75,18 @@ float RPS = 0.0;//Roll Per Second, if minus sign; reverse(-9 ~ 9)
 float RPS_electric = 0.0;//Roll Per Second : electric, mul7
 float roll_voltage_rate = 0.0;//PWM voltage rate
 
+//???//
+float onetime_variable = 0;
+
 //value for check variable//
 int val_CCER = 0;
 int val_CCR1 = 0;
 int val_CCR2 = 0;
 int val_CCR3 = 0;
 
-int32_t val_ref_angle_mul106 = 0;//0 ~ 359,999,999. now angle multiplied by 10
+int16_t val_past_ref_angle_mul10 = 0;//0 ~ 3599, past angle multiplied by 10
+int16_t val_ref_angle_mul10 = 0;//0 ~ 3599, now angle multiplied by 10
 int16_t val_ref_phases_mul10[3] = {0};//0 ~ 3599, reference each(UVW) phases
-
-int view_variable = 0;
 
 int loop_counter = 0;//count loop times
 
@@ -176,24 +178,25 @@ int main(void)
 	delta_time_100n = now_time_100n - past_time_100n;
 	past_time_100n = now_time_100n;
 
-//	loop_counter ++;
+	loop_counter ++;
 
 	//calculate now angle
-	RPS_electric = RPS * 7.0;
-	ref_angle_mul106 = past_ref_angle_mul106 + (int)(RPS_electric * 36.0 * (float)delta_time_100n);
-
-	view_variable = (int)(RPS_electric * 36.0 * (float)delta_time_100n);
-
-	while(ref_angle_mul106 < 0){//regulate to 0~360,000,000
-		ref_angle_mul106 += (360 * 1000000);
+	RPS_electric = RPS * 7;
+	onetime_variable = RPS_electric * 3600.0 * (float)delta_time_100n * 0.0000001;
+	ref_angle_mul10 = past_ref_angle_mul10 + onetime_variable;
+	while(ref_angle_mul10 < 0.0 || ref_angle_mul10 > 3600.0){//regulate to 0~3600
+		if(ref_angle_mul10 < 0.0){
+			ref_angle_mul10 += 3600.0;
+		}else if(ref_angle_mul10 > 3600.0){
+			ref_angle_mul10 -= 3600.0;
+		}
 	}
-	ref_angle_mul106 %= (360 * 1000000);
 
 	//calculate each phase
-	ref_phases_mul10[0] = ref_angle_mul106 * 0.00001;
-	ref_phases_mul10[1] = ref_phases_mul10[0] + 1200;
+	ref_phases_mul10[0] = (int)ref_angle_mul10;
+	ref_phases_mul10[1] = ref_angle_mul10 + 1200;
 		ref_phases_mul10[1] %= 3600;//regulate to 0~3600
-	ref_phases_mul10[2] = ref_phases_mul10[0] + 2400;
+	ref_phases_mul10[2] = ref_angle_mul10 + 2400;
 		ref_phases_mul10[2] %= 3600;//regulate to 0~3600
 
 	//calculate each phase Duty
@@ -212,7 +215,7 @@ int main(void)
 	set_PWMDuty(3, dutys);//出力を??��?��?れるようにした??��?��?
 
 	//substitute now to past
-	past_ref_angle_mul106 = ref_angle_mul106;
+	past_ref_angle_mul10 = ref_angle_mul10;
 
 	//check resister
 	val_CCER = TIM1 -> CCER;//HiZ_nFlag[0~2]
@@ -220,7 +223,8 @@ int main(void)
 	val_CCR2 = TIM1 -> CCR2;//dutys[1]
 	val_CCR3 = TIM1 -> CCR3;//dutys[2]
 
-	val_ref_angle_mul106 = ref_angle_mul106;//0 ~ 3599, now angle multiplied by 10
+	val_past_ref_angle_mul10 = past_ref_angle_mul10;//0 ~ 3599, past angle multiplied by 10
+	val_ref_angle_mul10 = ref_angle_mul10;//0 ~ 3599, now angle multiplied by 10
 	val_ref_phases_mul10[0] = ref_phases_mul10[0];//0 ~ 3599, reference each(UVW) phases
 	val_ref_phases_mul10[1] = ref_phases_mul10[1];//0 ~ 3599, reference each(UVW) phases
 	val_ref_phases_mul10[2] = ref_phases_mul10[2];//0 ~ 3599, reference each(UVW) phases

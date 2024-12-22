@@ -180,9 +180,9 @@ int main(void)
 
 	//calculate now angle
 	RPS_electric = RPS * 7.0;
-	ref_angle_mul106 = past_ref_angle_mul106 + (int)(RPS_electric * 36.0 * (float)delta_time_100n);
-
 	view_variable = (int)(RPS_electric * 36.0 * (float)delta_time_100n);
+	ref_angle_mul106 = past_ref_angle_mul106 + view_variable;
+//	ref_angle_mul106 = past_ref_angle_mul106 + (int)(RPS_electric * 36.0 * (float)delta_time_100n);
 
 	while(ref_angle_mul106 < 0){//regulate to 0~360,000,000
 		ref_angle_mul106 += (360 * 1000000);
@@ -198,7 +198,7 @@ int main(void)
 
 	//calculate each phase Duty
 	cal_120dgrSquareWave(ref_phases_mul10[0], roll_voltage_rate, 1, dutys, HiZ_nFlag);
-	cal_120dgrSquareWave(ref_phases_mul10[1], roll_voltage_rate, 2, dutys, HiZ_nFlag);//ã‚»??ï¿½ï¿½?ï¿½ï¿½?ãƒˆã—ã¦ã‚‹ï¿½???ï¿½ï¿½?ï¿½ï¿½??ï¿½ï¿½?ï¿½ï¿½?ã‘ç¢ºèªã—ãŸã„
+	cal_120dgrSquareWave(ref_phases_mul10[1], roll_voltage_rate, 2, dutys, HiZ_nFlag);//ã‚»???¿½?¿½??¿½?¿½?ãƒˆã—ã¦ã‚‹ï¿½????¿½?¿½??¿½?¿½???¿½?¿½??¿½?¿½?ã‘ç¢ºèªã—ãŸã„
 	cal_120dgrSquareWave(ref_phases_mul10[2], roll_voltage_rate, 3, dutys, HiZ_nFlag);
 
 	//set CCER resister to complementary PWM
@@ -209,7 +209,7 @@ int main(void)
 	//output each Duty
 	set_PWMDuty(1, dutys);
 	set_PWMDuty(2, dutys);
-	set_PWMDuty(3, dutys);//å‡ºåŠ›ã‚’??ï¿½ï¿½?ï¿½ï¿½?ã‚Œã‚‹ã‚ˆã†ã«ã—ãŸ??ï¿½ï¿½?ï¿½ï¿½?
+	set_PWMDuty(3, dutys);//å‡ºåŠ›ã‚’???¿½?¿½??¿½?¿½?ã‚Œã‚‹ã‚ˆã†ã«ã—ãŸ???¿½?¿½??¿½?¿½?
 
 	//substitute now to past
 	past_ref_angle_mul106 = ref_angle_mul106;
@@ -470,7 +470,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 7;
+  htim1.Init.Prescaler = 2;
   htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
   htim1.Init.Period = 1999;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
